@@ -1,0 +1,11 @@
+{
+  "title": "Rummikub",
+  "description": "Pose tes tuiles, vole les jokers et ruine la table de tes potes : le grand classique, en ligne et en version épique.",
+  "author": "ChadGang",
+  "category": "Réflexion",
+  "emoji": "🧩",
+  "joueurs": "2-4",
+  "image": "cover.png",
+  "classement": "victoires",
+  "unite": "pts"
+}

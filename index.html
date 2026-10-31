@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Rummikub – ChadGangGames</title>
+<link rel="stylesheet" href="style.css">
+<script src="/_sdk.js"></script>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div id="banner"></div>
+<div id="reacts"></div>
+<div id="toast"></div>
+
+<!-- Accueil -->
+<main id="home" class="screen">
+  <div class="bgtiles" id="bgtiles"></div>
+  <div class="homebox">
+    <h1 class="logo" id="logo" aria-label="Rummikub"></h1>
+    <p class="tag">Pose tes tuiles, vole les jokers, ruine la table de tes potes. 2 à 4 joueurs en ligne.</p>
+    <p class="hello hidden" id="hello"></p>
+    <label class="field" id="pseudoField"><span>Ton pseudo</span>
+      <input id="pseudo" maxlength="20" autocomplete="off" placeholder="Ton pseudo">
+    </label>
+    <button class="btn big yellow" id="btnCreate">🎲 Créer une partie</button>
+    <div class="or">ou rejoindre avec un code</div>
+    <div class="joinrow">
+      <input id="code" maxlength="12" placeholder="CODE" autocomplete="off" autocapitalize="characters">
+      <button class="btn blue" id="btnJoin">Rejoindre</button>
+    </div>
+    <div class="err" id="homeErr"></div>
+    <button class="btn link" id="btnRules">📖 Les règles</button>
+  </div>
+</main>
+
+<!-- Salle d'attente -->
+<main id="lobby" class="screen hidden">
+  <div class="homebox">
+    <div class="small">Code de la salle</div>
+    <button class="roomcode" id="roomCode" title="Copier le lien d'invitation">----</button>
+    <div class="small" id="copyHint">Touche le code pour copier le lien d'invitation</div>
+    <div id="lobbyPlayers"></div>
+    <div id="lobbyHost" class="hidden">
+      <label class="field inline"><span>⏱ Temps par tour</span>
+        <select id="optTime">
+          <option value="0">Illimité</option>
+          <option value="60">60 secondes</option>
+          <option value="120" selected>2 minutes</option>
+          <option value="180">3 minutes</option>
+        </select>
+      </label>
+      <button class="btn big yellow" id="btnStart">🚀 Lancer la partie</button>
+    </div>
+    <div id="lobbyWait" class="small hidden">L’hôte va lancer la partie…</div>
+    <button class="btn link" id="btnLeave">← Quitter la salle</button>
+  </div>
+</main>
+
+<!-- Partie -->
+<main id="game" class="screen hidden">
+  <header id="top">
+    <div id="chips"></div>
+    <button class="icon" id="btnMenu" aria-label="Menu">☰</button>
+    <div id="menu" class="pop hidden">
+      <button id="mSound">🔊 Son</button>
+      <button id="mLog">📜 Journal</button>
+      <button id="mRules">📖 Règles</button>
+      <button id="mLeave">🚪 Quitter</button>
+    </div>
+  </header>
+  <section id="tableWrap">
+    <div id="table"></div>
+    <div id="tableHint"></div>
+  </section>
+  <footer id="bottom">
+    <div id="statusRow"><span id="status"></span><span id="open"></span></div>
+    <div id="rackWrap"><div id="rack"></div></div>
+    <div id="actions">
+      <button class="tool" id="btnSortN" title="Trier par chiffre">123</button>
+      <button class="tool" id="btnSortC" title="Trier par couleur">🎨</button>
+      <button class="tool" id="btnUndo" title="Annuler le dernier geste">↩</button>
+      <button class="tool" id="btnReset" title="Tout remettre comme au début du tour">⟲</button>
+      <button class="tool" id="btnReact" title="Réactions">😀</button>
+      <button class="btn yellow" id="btnEnd">Piocher</button>
+    </div>
+    <div id="reactBar" class="pop hidden"></div>
+  </footer>
+  <div id="logPanel" class="pop hidden"></div>
+</main>
+
+<!-- Fin de partie -->
+<div id="over" class="overlay hidden">
+  <div class="card">
+    <div class="trophy" id="overIcon">🏆</div>
+    <h2 id="overTitle">Victoire !</h2>
+    <div id="overRows"></div>
+    <div class="row">
+      <button class="btn yellow" id="btnAgain">🔁 Rejouer</button>
+      <button class="btn blue" id="btnSee">👀 Voir la table</button>
+      <button class="btn link" id="btnQuit">Quitter</button>
+    </div>
+    <div class="small" id="againWait"></div>
+  </div>
+</div>
+
+<!-- Règles -->
+<div id="rules" class="overlay hidden">
+  <div class="card rulescard">
+    <h2>📖 Règles du Rummikub</h2>
+    <ul>
+      <li><b>But :</b> être le premier à poser toutes les tuiles de son chevalet. Chacun en reçoit 14.</li>
+      <li><b>Suite :</b> 3 tuiles ou plus de la <b>même couleur</b> qui se suivent (ex. 4-5-6 rouges). Pas de 13 → 1.</li>
+      <li><b>Brelan / carré :</b> 3 ou 4 tuiles du <b>même chiffre</b>, de <b>couleurs différentes</b>.</li>
+      <li><b>Joker :</b> remplace n’importe quelle tuile. Il vaut 30 points s’il te reste en main.</li>
+      <li><b>Ouverture :</b> ta première pose doit valoir <b>30 points</b> minimum, avec tes seules tuiles (sans toucher à la table).</li>
+      <li><b>Ensuite :</b> tu peux tout manipuler sur la table (couper, rallonger, mélanger, voler un joker…) tant que <b>tout est valide</b> à la fin de ton tour.</li>
+      <li><b>Pas jouable ?</b> Tu pioches une tuile et ton tour s’arrête.</li>
+      <li><b>Fin :</b> le premier à vider son chevalet gagne. Si la pioche est vide et que tout le monde bloque, le plus petit chevalet gagne.</li>
+    </ul>
+    <p class="small"><b>Commandes :</b> glisse-dépose les tuiles (au doigt ou à la souris). La poignée ⠿ à gauche d’une combinaison déplace tout le groupe. Contour vert = combinaison valide, rouge = à corriger. Tu peux réorganiser ton chevalet même pendant le tour des autres.</p>
+    <button class="btn yellow" id="btnRulesClose">Compris !</button>
+  </div>
+</div>
+
+<script src="rules.js"></script>
+<script src="fx.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
