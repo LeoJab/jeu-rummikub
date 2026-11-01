@@ -6,7 +6,7 @@
   var R = window.Rules, FX = window.FX;
   var $ = function (s) { return document.querySelector(s); };
   var SYM = ['●', '▲', '■', '◆'];
-  var MAXP = 4;
+  var MAXP = 7;
   var EMOJIS = ['👏', '😱', '😂', '🔥', '🤡', '😭', '🫡', '💀'];
   var hub = !!window.ChadGang;
 
@@ -160,7 +160,7 @@
       var cur = S.pl[S.turn];
       if (!cur || cur.id !== from.id || !Array.isArray(d.table)) return;
       draft = { v: d.v, table: d.table };
-      renderChips(); renderTable();
+      renderChips(); renderLastMove(); renderTable();
     } else if (d.t === 'hi') {
       if (from.id !== myId && d.avatar) { avatars[from.id] = d.avatar; if (S) renderChips(); else renderLobby(); }
     } else if (d.t === 'react') {
@@ -331,15 +331,67 @@
   }
 
   /* ================= Rendu ================= */
+  var PCOL = ['#ffd426', '#2ad1ff', '#ff6ad5', '#7dff6b', '#ff9a1f', '#b48aff', '#ff5a5a'];
+  function pcolor(i) { return PCOL[((i % PCOL.length) + PCOL.length) % PCOL.length]; }
+
   function render() {
     if (!S) return;
-    renderChips(); renderTable(); renderRack(); renderBottom();
+    renderChips(); renderLastMove(); renderTable(); renderRack(); renderBottom();
+  }
+
+  /* Bandeau « qu'est-ce qui vient de se passer » + état en direct du joueur qui réfléchit */
+  function renderLastMove() {
+    var box = $('#lastMove');
+    box.textContent = '';
+    if (!S) return;
+    var ev = S.ev || {}, p = S.pl[ev.by], mi = myIdx();
+    if (p) {
+      var line = el('div', 'lm lm-last');
+      var who = (mi === ev.by) ? 'Tu' : p.name;
+      var dot = el('i', 'dot'); dot.style.background = pcolor(ev.by);
+      line.appendChild(dot);
+      var txt;
+      if (ev.k === 'play' || ev.k === 'win') {
+        txt = who + (mi === ev.by ? ' as posé ' : ' a posé ') + ev.n + ' tuile' + (ev.n > 1 ? 's' : '');
+        if (ev.open) txt += ' · ouverture ' + ev.pts + ' pts';
+        else if (ev.manip) txt += ' · en manipulant la table';
+        if (ev.jm) txt += ' · joker volé !';
+      } else if (ev.k === 'draw') txt = who + (mi === ev.by ? ' as pioché' : ' a pioché') + ' une tuile';
+      else if (ev.k === 'skip') txt = p.name + ' est absent : il pioche';
+      else if (ev.k === 'pass') txt = who + ' passe';
+      else if (ev.k === 'block') txt = 'Partie bloquée';
+      else txt = 'La partie commence !';
+      line.appendChild(el('span', null, txt));
+      if ((ev.k === 'play' || ev.k === 'win') && S.fr && S.fr.length) {
+        var mini = el('span', 'mini');
+        S.fr.forEach(function (id) { mini.appendChild(tileEl(id)); });
+        line.appendChild(mini);
+      }
+      box.appendChild(line);
+    }
+    var cur = S.pl[S.turn];
+    if (S.phase === 'play' && cur && cur.id !== myId) {
+      var base = {}, placed = [];
+      S.table.forEach(function (st) { st.forEach(function (id) { base[id] = 1; }); });
+      if (draft && draft.v === S.v) draft.table.forEach(function (st) { st.forEach(function (id) { if (!base[id]) placed.push(id); }); });
+      var live = el('div', 'lm lm-live');
+      var d2 = el('i', 'dot'); d2.style.background = pcolor(S.turn);
+      live.appendChild(d2);
+      live.appendChild(el('span', null, placed.length ? '✋ ' + cur.name + ' joue… ' + placed.length + ' tuile' + (placed.length > 1 ? 's' : '') + ' posée' + (placed.length > 1 ? 's' : '') : '🤔 ' + cur.name + ' réfléchit…'));
+      if (placed.length) {
+        var m2 = el('span', 'mini');
+        placed.forEach(function (id) { m2.appendChild(tileEl(id)); });
+        live.appendChild(m2);
+      }
+      box.appendChild(live);
+    }
   }
 
   function renderChips() {
     if (!S) return;
     var box = $('#chips');
     box.textContent = '';
+    box.classList.toggle('many', S.pl.length > 4);
     var baseIds = {}, placed = 0;
     S.table.forEach(function (st) { st.forEach(function (id) { baseIds[id] = 1; }); });
     if (draft && draft.v === S.v) draft.table.forEach(function (st) { st.forEach(function (id) { if (!baseIds[id]) placed++; }); });
@@ -349,7 +401,11 @@
       var c = el('div', 'chip' + (turn ? ' turn' : '') + (online ? '' : ' off'));
       c.appendChild(avEl(p.id, p.name));
       var who = el('div', 'who');
-      who.appendChild(el('div', 'nm', p.name + (p.id === myId ? ' (toi)' : '')));
+      var nm = el('div', 'nm');
+      var pd = el('i', 'dot'); pd.style.background = pcolor(i);
+      nm.appendChild(pd);
+      nm.appendChild(document.createTextNode(p.name + (p.id === myId ? ' (toi)' : '')));
+      who.appendChild(nm);
       var cnt = S.racks[i].length - (turn && p.id !== myId ? placed : 0);
       if (turn && p.id === myId && work) cnt = work.rack.length;
       who.appendChild(el('div', 'ct', '🎴 ' + cnt + (p.open ? ' 🔓' : ' 🔒')));
@@ -382,8 +438,11 @@
       if (canDrag) d.appendChild(el('div', 'grip', '⠿'));
       set.forEach(function (id) {
         var t = tileEl(id);
-        if (fr[id] || (isDraft && !base[id])) t.classList.add('fresh');
-        if (fr[id] && popped[id] !== S.v && !work) { t.classList.add('pop'); popped[id] = S.v; }
+        if (fr[id] || (isDraft && !base[id])) {
+          t.classList.add('fresh');
+          t.style.setProperty('--pc', pcolor(isDraft && !fr[id] ? S.turn : (S.ev ? S.ev.by : 0)));
+        }
+        if (fr[id] && popped[id] !== S.v && !work) { t.classList.add('tpop'); popped[id] = S.v; }
         d.appendChild(t);
       });
       T.appendChild(d);
